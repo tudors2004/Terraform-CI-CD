@@ -1,0 +1,40 @@
+name: Terraform Destroy
+
+on:
+  push:
+    branches:
+      - test
+  workflow_dispatch:
+    inputs:
+      action:
+        description: 'Terraform destroy'
+        required: true
+        default: 'destroy'
+        type: choice
+        options:
+          - destroy
+
+jobs:
+  terraform-destroy:
+    if: github.event.inputs.action == 'destroy'
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Wait before destroying (delay for 60 seconds)
+        run: |
+          echo "Waiting 60 seconds before destroying infrastructure..."
+          sleep 60
+
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Set up Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.5.7
+
+      - name: Terraform Init
+        run: terraform init
+
+      - name: Terraform Destroy
+        run: terraform destroy -auto-approve
