@@ -1,0 +1,69 @@
+name: Terraform Pipeline
+
+on:
+  push:
+    branches:
+      - test
+  workflow_dispatch:
+    inputs:
+      action:
+        description: 'Terraform action to run'
+        required: true
+        default: 'validate-plan'
+        type: choice
+        options:
+          - init-fmt
+          - validate-plan
+          - apply
+          - output
+   
+
+jobs:
+  terraform:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Set up Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.5.7
+
+      # Stage 1: Init & Fmt
+      - name: Terraform Init & Format
+        if: github.event_name == 'push' || github.event.inputs.action == 'init-fmt'
+        run: |
+          terraform init
+          terraform fmt -check
+
+      # Stage 2: Validate & Plan
+      - name: Terraform Validate & Plan
+        if: github.event_name == 'push' || github.event.inputs.action == 'validate-plan'
+        run: |
+          terraform validate
+          terraform plan -out=tfplan
+
+      # Stage 3: Apply
+      - name: Terraform Apply
+        if: github.event_name == 'push' || github.event.inputs.action == 'apply'
+        run: terraform apply -auto-approve tfplan
+
+      # Stage 4: Output
+      - name: Terraform Output
+        if: github.event_name == 'push' || github.event.inputs.action == 'output'
+        run: terraform output
+
+      # Manual Destroy Only
+      #- name: Terraform Destroy
+      #  if: github.event.inputs.action == 'destroy'
+      #  run: terraform destroy -auto-approve
+
+      # Artifact Upload
+      - name: Upload output.txt
+        if: github.event.inputs.action != 'destroy'
+        uses: actions/upload-artifact@v4
+        with:
+          name: terraform-output
+          path: output.txt
